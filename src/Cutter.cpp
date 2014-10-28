@@ -668,7 +668,7 @@ int main(int argc, char** argv)
 		if(argc == 5)
 		{
 			cout << "\tRunning with cut distance " << ttr_distance << " cm" << endl;
-			RunTTRCut(inputfile,outputfile,ttr_distance.Atoi());
+			RunTTRCut(inputfile,outputfile,ttr_distance.Atof());
 		}
 		else
 		{
