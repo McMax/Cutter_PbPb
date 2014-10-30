@@ -526,10 +526,9 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 	const Long64_t treeNentries = input_tree->GetEntries();
 	Long64_t ev;
 	Long_t particles_in = 0, particles_out = 0;
-	UInt_t partA, partB, Npa;
+	UInt_t partA, partB, part, Npa;
 
 	Float_t distance_av;
-	Bool_t track_ok;
 	cout << "distance in function: " << distance << endl;
 
 	for(ev=0; ev<treeNentries; ++ev)
@@ -543,8 +542,7 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 		Bool_t ttr_flags[Npa];
 		fill_n(ttr_flags,Npa,true);
 		
-		output_tree.BeginEvent();
-
+		//First run - marking particles as good or bad to analyze
 		for(partA=0; partA<Npa; partA++)
 		{
 			++particles_in;
@@ -554,7 +552,6 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 				continue;
 			}
 
-			track_ok = true;
 			particleA = event->GetParticle(partA);
 
 			for(partB=partA+1; partB<Npa; ++partB)
@@ -573,23 +570,26 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 				
 				if(distance_av < distance)
 				{
-					track_ok = false;
 					ttr_flags[partB] = false;
 					//cout << "Ev: " << ev << " particles " << partA << " and " << partB << " will be cut" << endl;
 					//cerr << "Average: " << distance_av << endl;
 					break;
 				}
 			}
-
-			if(track_ok)
-			{
-				//trackA accepted
-				++particles_out;
-				output_tree.AddParticle(*particleA);
-			}
 		}
-		
 		//cerr << "Event: " << ev << " | Cutted " << (Npa-output_tree.Check()) << " particles" << endl;
+		
+		//Second run - copying good particles
+		output_tree.BeginEvent();
+		for(part=0; part<Npa; part++)
+		{
+			if(!ttr_flags[part])
+				continue;
+
+				++particles_out;
+				output_tree.AddParticle(*(event->GetParticle(part)));
+			
+		}
 		output_tree.EndEvent();
 	}
 
