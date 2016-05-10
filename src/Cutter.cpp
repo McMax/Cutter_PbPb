@@ -570,6 +570,7 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 				
 				if(distance_av < distance)
 				{
+					ttr_flags[partA] = false;
 					ttr_flags[partB] = false;
 					//cout << "Ev: " << ev << " particles " << partA << " and " << partB << " will be cut" << endl;
 					//cerr << "Average: " << distance_av << endl;
