@@ -5,6 +5,7 @@
 
 #include "TMath.h"
 #include "TCutG.h"
+#include "TRandom2.h"
 
 #include "ParticleTree.h"
 #include "Event.h"
@@ -531,6 +532,8 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 	Float_t distance_av;
 	cout << "distance in function: " << distance << endl;
 
+	TRandom2 randgen(time(NULL));
+
 	for(ev=0; ev<treeNentries; ++ev)
 	{
 		if(!(ev%500))
@@ -570,8 +573,11 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 				
 				if(distance_av < distance)
 				{
-					ttr_flags[partA] = false;
-					ttr_flags[partB] = false;
+					//Remove randomly one of particles
+					if((randgen.Rndm()) < 0.5)
+						ttr_flags[partA] = false;
+					else
+						ttr_flags[partB] = false;
 					//cout << "Ev: " << ev << " particles " << partA << " and " << partB << " will be cut" << endl;
 					//cerr << "Average: " << distance_av << endl;
 					break;
