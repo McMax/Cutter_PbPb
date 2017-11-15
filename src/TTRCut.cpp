@@ -15,6 +15,9 @@ Float_t TTRCut::calcAvDistance(Particle* particleA, Particle* particleB)
 {
 	count = 0;
 	distance_sum = 0;
+	trackA.Set(0.,0.);
+	trackB.Set(0.,0.);
+	mov.Set(0.,0.);
 	//VTPC1 start
 	if((particleA->GetVTPC1_Sx()!=9999) && (particleB->GetVTPC1_Sx()!=9999))
 	{

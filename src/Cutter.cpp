@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <algorithm> //fill_n
 #include <string>
 #include <cstdlib>
@@ -519,6 +520,8 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 
 	ParticleTree output_tree(outputfile);
 
+	ofstream debugfile("Debug.txt");
+
 	Event *event = new Event();
 	Particle *particleA, *particleB;
 	input_tree->SetBranchAddress("event",&event);
@@ -531,7 +534,8 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 	Float_t distance_av;
 	cout << "distance in function: " << distance << endl;
 
-	for(ev=0; ev<treeNentries; ++ev)
+	//for(ev=0; ev<treeNentries; ++ev)
+	for(ev=0; ev<2; ++ev)
 	{
 		if(!(ev%500))
 			cout << "Event: " << ev << " " << event->GetNpa() << " particles" << endl;
@@ -546,30 +550,35 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 		for(partA=0; partA<Npa; partA++)
 		{
 			++particles_in;
-			if(!ttr_flags[partA])
-			{
-				//cout << "Ev: " << ev << " part: " << partA << " skipped" << endl;
-				continue;
-			}
+			//if(!ttr_flags[partA])
+			//{
+			//	//cout << "Ev: " << ev << " part: " << partA << " skipped" << endl;
+			//	continue;
+			//}
 
 			particleA = event->GetParticle(partA);
 
 			for(partB=partA+1; partB<Npa; ++partB)
 			{
-				if(!ttr_flags[partB])
-				{
-					//cout << "Ev: " << ev << " part: " << partB << " skipped" << endl;
-					continue;
-				}
+			//	if((!ttr_flags[partA]) || (!ttr_flags[partB]))
+			//	{
+			//		//cout << "Ev: " << ev << " part: " << partB << " skipped" << endl;
+			//		continue;
+			//	}
 
 				particleB = event->GetParticle(partB);
 
 				///////////////////
 				distance_av = ttrcut.calcAvDistance(particleA,particleB);
 				//////////////////
+				debugfile << "Ev: " << ev
+					<< " partA: " << partA << " px=" << particleA->GetPx() << " py=" << particleA->GetPy()
+					<< " partB: " << partB << " px=" << particleB->GetPx() << " py=" << particleB->GetPy()
+					<< " TTD: " << distance_av << endl;
 				
 				if(distance_av < distance)
 				{
+					ttr_flags[partA] = false;
 					ttr_flags[partB] = false;
 					//cout << "Ev: " << ev << " particles " << partA << " and " << partB << " will be cut" << endl;
 					//cerr << "Average: " << distance_av << endl;
@@ -586,8 +595,8 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 			if(!ttr_flags[part])
 				continue;
 
-				++particles_out;
-				output_tree.AddParticle(*(event->GetParticle(part)));
+			++particles_out;
+			output_tree.AddParticle(*(event->GetParticle(part)));
 			
 		}
 		output_tree.EndEvent();
@@ -595,6 +604,7 @@ int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
 
 	input_rootfile->Close();
 	output_tree.Close();
+	debugfile.close();
 
 	cout << "TTR cut summary\n------------" << endl
 		<< "Events: " << treeNentries << endl
