@@ -12,7 +12,6 @@
 #include "Particle.h"
 #include "dEdxCut.h"
 #include "PPMCut.h"
-#include "TTRCut.h"
 
 using namespace std;
 
@@ -101,7 +100,7 @@ Float_t choose_dedx(Particle *particle, TString system)
 		//std::cout << "dE/dx: VTPC1 part: " << vtpc1_part << "\tVTPC2 part: " << vtpc2_part << "\tMTPC part: " << mtpc_part << std::endl;
 		if((vtpc1_part == 0) && (vtpc2_part == 0) && (mtpc_part == 0))
 		{
-			std::cout << "WTF? Particle with no dE/dx information!" << std::endl;
+			//std::cout << "WTF? Particle with no dE/dx information!" << std::endl;
 			return 0;
 		}
 		else
@@ -138,6 +137,7 @@ void RunDedxCut(TString inputfile, TString outputfile, TString system, Int_t ene
 
 	const Long64_t treeNentries = input_tree->GetEntries();
 	Long64_t ev;
+	Long_t particles_in = 0, particles_out = 0;
 	UInt_t Npa;
 	UInt_t part;
 
@@ -167,12 +167,16 @@ void RunDedxCut(TString inputfile, TString outputfile, TString system, Int_t ene
 
 		for(part=0; part<Npa; part++)
 		{
+			particles_in++;
 			particle = event->GetParticle(part);
 			p = TMath::Sqrt(TMath::Power(particle->GetPx(),2)+TMath::Power(particle->GetPy(),2)+TMath::Power(particle->GetPz(),2));
-			local_dedx = choose_dedx(particle, system);
+			if(choose_dedx(particle, system) == 0)	//Using global dE/dx values instead of choosing local ones (i.e. by number of dE/dx points left in TPCs)
+				continue;
+		
+			local_dedx = particle->GetdEdx();
+
 			if(cutg->IsInside(p,local_dedx))
 				continue;
-
 			if(local_dedx > dedx_uppercut)
 				continue;		//dodatkowy cut 3.02.2013
 
@@ -180,12 +184,20 @@ void RunDedxCut(TString inputfile, TString outputfile, TString system, Int_t ene
 					particle->GetPx(), particle->GetPy(), particle->GetPz(),
 					particle->GetdEdx(), particle->GetdEdxVtpc1(), particle->GetdEdxVtpc2(), particle->GetdEdxMtpc(),
 					particle->GetNdEdx(), particle->GetNdEdxVtpc1(), particle->GetNdEdxVtpc2(), particle->GetNdEdxMtpc());
+
+			particles_out++;
 		}
 		output_tree.EndEvent();
 	}
 
 	output_tree.Close();
 	input_rootfile->Close();
+
+	cout << "dEdx cut summary\n------------" << endl
+		<< "Particles before cut: " << particles_in << endl
+		<< "Particles after cut: " << particles_out << endl
+		<< "Cutted particles: " << (particles_in-particles_out) << endl
+		<< "Ratio: " << ((Double_t)particles_out/particles_in) << endl;
 }
 
 Bool_t is_electron(double logP, double dEdx) {
@@ -270,186 +282,6 @@ void RunDedxCut2(TString inputfile, TString outputfile)
 		<< "Ratio: " << ((Double_t)particles_out/particles_in) << endl;
 }
 
-void RunElasticCut(TString inputfile, TString outputfile, Int_t energy)
-{
-	TFile *input_rootfile = new TFile(inputfile);
-	TTree* input_tree = (TTree*)input_rootfile->Get("events");
-
-	ParticleTree output_tree(outputfile);
-
-	Event *event = new Event();
-	Particle *particle;
-	input_tree->SetBranchAddress("event",&event);
-
-	const Long64_t treeNentries = input_tree->GetEntries();
-	Long64_t ev;
-	Long_t particles_in = 0, particles_out = 0, events_out = 0;
-	UInt_t part, Npa;
-
-	Float_t p;
-	Bool_t event_cancelled;
-
-	for(ev=0; ev<treeNentries; ++ev)
-	{
-		if(!(ev%500))
-			cout << "Event: " << ev << endl;
-
-		input_tree->GetEntry(ev);
-
-		Npa = event->GetNpa();
-
-		event_cancelled = false;
-		for(part=0; part<Npa; ++part)
-		{
-			particle = event->GetParticle(part);
-			p = TMath::Sqrt(TMath::Power(particle->GetPx(),2)+TMath::Power(particle->GetPy(),2)+TMath::Power(particle->GetPz(),2));
-			if((particle->isPositive()) && (p > energy - 3))
-			{
-				event_cancelled = true;
-				break;
-			}
-		}
-
-		particles_in+=Npa;
-
-		if(event_cancelled)
-			continue;
-
-		events_out++;
-		
-		output_tree.BeginEvent();
-
-		for(part=0; part<Npa; part++)
-		{
-			particle = event->GetParticle(part);
-			
-			output_tree.AddParticle(particle->GetCharge(),
-					particle->GetPx(), particle->GetPy(), particle->GetPz(),
-					particle->GetdEdx(), particle->GetdEdxVtpc1(), particle->GetdEdxVtpc2(), particle->GetdEdxMtpc(),
-					particle->GetNdEdx(), particle->GetNdEdxVtpc1(), particle->GetNdEdxVtpc2(), particle->GetNdEdxMtpc());
-		}
-		output_tree.EndEvent();
-		particles_out+=Npa;
-	}
-
-	output_tree.Close();
-	input_rootfile->Close();
-
-	cout << "Elastic cut summary\n------------" << endl
-		<< "Events before cut: " << treeNentries  << endl
-		<< "Events after cut: " << events_out << endl
-		<< "Cutted events: " << (treeNentries-events_out) << endl
-		<< "Ratio: " << ((Double_t)treeNentries/events_out) << "\n------------" << endl
-		<< "Particles before cut: " << particles_in << endl
-		<< "Particles after cut: " << particles_out << endl
-		<< "Cutted particles: " << (particles_in-particles_out) << endl
-		<< "Ratio: " << ((Double_t)particles_out/particles_in) << endl;
-}
-
-int RunTTRCut(TString inputfile, TString outputfile, double distance=1.6)
-{
-	TTRCut ttrcut;
-	TFile *input_rootfile = new TFile(inputfile);
-	TTree* input_tree = (TTree*)input_rootfile->Get("events");
-
-	ParticleTree output_tree(outputfile);
-
-	ofstream debugfile("Debug.txt");
-
-	Event *event = new Event();
-	Particle *particleA, *particleB;
-	input_tree->SetBranchAddress("event",&event);
-
-	const Long64_t treeNentries = input_tree->GetEntries();
-	Long64_t ev;
-	Long_t particles_in = 0, particles_out = 0;
-	UInt_t partA, partB, part, Npa;
-
-	Float_t distance_av;
-	cout << "distance in function: " << distance << endl;
-
-	//for(ev=0; ev<treeNentries; ++ev)
-	for(ev=0; ev<2; ++ev)
-	{
-		if(!(ev%500))
-			cout << "Event: " << ev << " " << event->GetNpa() << " particles" << endl;
-
-		input_tree->GetEntry(ev);
-		Npa = event->GetNpa();
-
-		Bool_t ttr_flags[Npa];
-		fill_n(ttr_flags,Npa,true);
-		
-		//First run - marking particles as good or bad to analyze
-		for(partA=0; partA<Npa; partA++)
-		{
-			++particles_in;
-			//if(!ttr_flags[partA])
-			//{
-			//	//cout << "Ev: " << ev << " part: " << partA << " skipped" << endl;
-			//	continue;
-			//}
-
-			particleA = event->GetParticle(partA);
-
-			for(partB=partA+1; partB<Npa; ++partB)
-			{
-			//	if((!ttr_flags[partA]) || (!ttr_flags[partB]))
-			//	{
-			//		//cout << "Ev: " << ev << " part: " << partB << " skipped" << endl;
-			//		continue;
-			//	}
-
-				particleB = event->GetParticle(partB);
-
-				///////////////////
-				distance_av = ttrcut.calcAvDistance(particleA,particleB);
-				//////////////////
-				debugfile << "Ev: " << ev
-					<< " partA: " << partA << " px=" << particleA->GetPx() << " py=" << particleA->GetPy()
-					<< " partB: " << partB << " px=" << particleB->GetPx() << " py=" << particleB->GetPy()
-					<< " TTD: " << distance_av << endl;
-				
-				if(distance_av < distance)
-				{
-					ttr_flags[partA] = false;
-					ttr_flags[partB] = false;
-					//cout << "Ev: " << ev << " particles " << partA << " and " << partB << " will be cut" << endl;
-					//cerr << "Average: " << distance_av << endl;
-					break;
-				}
-			}
-		}
-		//cerr << "Event: " << ev << " | Cutted " << (Npa-output_tree.Check()) << " particles" << endl;
-		
-		//Second run - copying good particles
-		output_tree.BeginEvent();
-		for(part=0; part<Npa; part++)
-		{
-			if(!ttr_flags[part])
-				continue;
-
-			++particles_out;
-			output_tree.AddParticle(*(event->GetParticle(part)));
-			
-		}
-		output_tree.EndEvent();
-	}
-
-	input_rootfile->Close();
-	output_tree.Close();
-	debugfile.close();
-
-	cout << "TTR cut summary\n------------" << endl
-		<< "Events: " << treeNentries << endl
-		<< "Particles before cut: " << particles_in << endl
-		<< "Particles after cut: " << particles_out << endl
-		<< "Cutted particles: " << particles_in-particles_out << endl
-		<< "Ratio: " << ((Double_t)particles_out/particles_in) << endl;
-
-	return particles_out;
-}
-
 int main(int argc, char** argv)
 {
 	if(argc <= 1)
@@ -483,31 +315,6 @@ int main(int argc, char** argv)
 			cout << "DEDX cut requires additional arguments: 1.energy, 2. system" << endl;
 			return 0;
 		}
-		//RunDedxCut(inputfile, outputfile, system, energy.Atoi());
-		RunDedxCut2(inputfile, outputfile);
-	}
-	else if(!(cut_mode.CompareTo("ELASTIC")))
-	{
-		if(argc != 5)
-		{
-			cout << "ELASTIC cut requires additional argument: energy" << endl;
-			return 0;
-		}
-		cout << "Elastic cut mode" << endl;
-		RunElasticCut(inputfile,outputfile, energy.Atoi());
-	}
-	else if(!(cut_mode.CompareTo("TTR")))
-	{
-		cout << "Two-track resolution mode" << endl;
-		if(argc == 5)
-		{
-			cout << "\tRunning with cut distance " << ttr_distance << " cm" << endl;
-			RunTTRCut(inputfile,outputfile,ttr_distance.Atof());
-		}
-		else
-		{
-			cout << "\tRunning with default cut distance" << endl;
-			RunTTRCut(inputfile,outputfile);
-		}
+		RunDedxCut(inputfile, outputfile, system, energy.Atoi());
 	}
 }
