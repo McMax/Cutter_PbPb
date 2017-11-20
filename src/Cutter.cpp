@@ -6,6 +6,7 @@
 
 #include "TMath.h"
 #include "TCutG.h"
+#include "TRandom2.h"
 
 #include "ParticleTree.h"
 #include "Event.h"
