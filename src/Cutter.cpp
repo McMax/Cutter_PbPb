@@ -46,32 +46,32 @@ void RunPPMCut(TString inputfile, TString outputfile, TString system, TString en
 		if(!(ev%50))
 			cout << "Event: " << ev << endl;
 
-			input_tree->GetEntry(ev);
-			Npa = event->GetNpa();
-			output_tree.BeginEvent();
+		input_tree->GetEntry(ev);
+		Npa = event->GetNpa();
+		output_tree.BeginEvent();
 
-			particles_in += Npa;
+		particles_in += Npa;
 
-			for(part=0; part<Npa; part++)
+		for(part=0; part<Npa; part++)
+		{
+			particle = event->GetParticle(part);
+			pt = TMath::Sqrt(TMath::Power(particle->GetPx(),2)+TMath::Power(particle->GetPy(),2));
+			p = TMath::Sqrt(TMath::Power(particle->GetPx(),2)+TMath::Power(particle->GetPy(),2)+TMath::Power(particle->GetPz(),2));
+			angle = TMath::ATan2(particle->GetPy(), particle->GetPx());
+
+			//CIECIE NA AKCEPTACJE
+			if(partpopmatrix.PartPopMatrixCut(particle->GetCharge(),p,pt,angle))
 			{
-				particle = event->GetParticle(part);
-				pt = TMath::Sqrt(TMath::Power(particle->GetPx(),2)+TMath::Power(particle->GetPy(),2));
-				p = TMath::Sqrt(TMath::Power(particle->GetPx(),2)+TMath::Power(particle->GetPy(),2)+TMath::Power(particle->GetPz(),2));
-				angle = TMath::ATan2(particle->GetPy(), particle->GetPx());
+				output_tree.AddParticle(particle->GetCharge(),
+						particle->GetPx(), particle->GetPy(), particle->GetPz(),
+						particle->GetdEdx(), particle->GetdEdxVtpc1(), particle->GetdEdxVtpc2(), particle->GetdEdxMtpc(),
+						particle->GetNdEdx(), particle->GetNdEdxVtpc1(), particle->GetNdEdxVtpc2(), particle->GetNdEdxMtpc());
 
-				//CIECIE NA AKCEPTACJE
-				if(partpopmatrix.PartPopMatrixCut(particle->GetCharge(),p,pt,angle))
-				{
-					output_tree.AddParticle(particle->GetCharge(),
-					particle->GetPx(), particle->GetPy(), particle->GetPz(),
-					particle->GetdEdx(), particle->GetdEdxVtpc1(), particle->GetdEdxVtpc2(), particle->GetdEdxMtpc(),
-					particle->GetNdEdx(), particle->GetNdEdxVtpc1(), particle->GetNdEdxVtpc2(), particle->GetNdEdxMtpc());
-
-					particles_out++;
-				}
+				particles_out++;
 			}
+		}
 
-			output_tree.EndEvent();
+		output_tree.EndEvent();
 	}
 
 	output_tree.Close();
@@ -366,9 +366,10 @@ void RunYCut(TString inputfile, TString outputfile, const Double_t beam_momentum
 	UInt_t Npa;
 	UInt_t part;
 
-	const Double_t proton_mass = 0.939;
-	const Double_t E_beam = TMath::Sqrt(proton_mass*proton_mass + beam_momentum*beam_momentum);
-	const Double_t y_beam = 0.5*TMath::Log((E_beam+beam_momentum)/(E_beam-beam_momentum));
+	const Double_t proton_mass = 0.938272013;
+	const Double_t nucleon_mass = 0.9389186795;
+	const Double_t beta = beam_momentum/(TMath::Sqrt(beam_momentum*beam_momentum+nucleon_mass*nucleon_mass)+nucleon_mass);
+	const Double_t y_beam = 0.5*TMath::Log((1+beta)/(1-beta));
 
 	cout << "y_target=0" << endl << "y_beam=" << y_beam << endl << "Everything outside 0.5 < y_prot < " << (y_beam - 0.5) << " will be rejected" << endl;
 
