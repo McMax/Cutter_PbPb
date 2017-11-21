@@ -287,6 +287,16 @@ void RunDedxCut2(TString inputfile, TString outputfile)
 //For ptcut values lower than 0, the cut will take everything between abs(ptcut) and infinity.
 void RunPtCut(TString inputfile, TString outputfile, const Float_t ptcut=1.5)
 {
+	if(ptcut > 0)
+		cout << "Particles with pT > " << ptcut << " GeV/c will be rejected" << endl;
+	else if(ptcut < 0)
+		cout << "Particles with pT: 0 < " << ptcut << " GeV/c will be rejected" << endl;
+	else
+	{
+		cout << "I don't see any sense in cutting all particles. Exiting" << endl;
+		return;
+	}
+
 	TFile *input_rootfile = new TFile(inputfile);
 	TTree* input_tree = (TTree*)input_rootfile->Get("events");
 
@@ -453,12 +463,10 @@ int main(int argc, char** argv)
 		if(argc == 5)
 		{
 			pt_cut_string = argv[4];
-			cout << "Transverse momentum cut mode: pt < " << pt_cut_string << " GeV/c" << endl;
 			RunPtCut(inputfile, outputfile, pt_cut_string.Atof());
 		}
 		else 
 		{
-			cout << "Transverse momentum cut mode: pt < 1.5 GeV/c" << endl;
 			RunPtCut(inputfile, outputfile);	//default 1.5 GeV
 		}
 	}
