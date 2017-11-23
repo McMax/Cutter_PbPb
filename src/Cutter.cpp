@@ -376,10 +376,11 @@ void RunYCut(TString inputfile, TString outputfile, const Double_t beam_momentum
 	UInt_t Npa;
 	UInt_t part;
 
+	//Calculation process is simplified: it assumes the system is symetrical (which is true for Pb+Pb system), the calculation is done for average mass of nucleon: (mass_of_neutron + mass_of_proton)/2
 	const Double_t proton_mass = 0.938272013;
 	const Double_t nucleon_mass = 0.9389186795;
-	const Double_t beta = beam_momentum/(TMath::Sqrt(beam_momentum*beam_momentum+nucleon_mass*nucleon_mass)+nucleon_mass);
-	const Double_t y_beam = 0.5*TMath::Log((1+beta)/(1-beta));
+	const Double_t E_beam = TMath::Sqrt(nucleon_mass*nucleon_mass + beam_momentum*beam_momentum);
+	const Double_t y_beam = 0.5*TMath::Log((E_beam+beam_momentum)/(E_beam-beam_momentum));
 
 	cout << "y_target=0" << endl << "y_beam=" << y_beam << endl << "Everything outside 0.5 < y_prot < " << (y_beam - 0.5) << " will be rejected" << endl;
 
