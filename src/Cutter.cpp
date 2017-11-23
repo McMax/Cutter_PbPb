@@ -381,7 +381,7 @@ void RunYCut(TString inputfile, TString outputfile, const Double_t beam_momentum
 	const Double_t beta = beam_momentum/(TMath::Sqrt(beam_momentum*beam_momentum+nucleon_mass*nucleon_mass)+nucleon_mass);
 	const Double_t y_beam = 0.5*TMath::Log((1+beta)/(1-beta));
 
-	cout << "y_target=0" << endl << "y_beam=" << y_beam << endl << "Everything outside 0.5 < y_prot < " << (y_beam - 0.5) << " will be rejected" << endl;
+	cout << "y_target=0" << endl << "y_beam=" << y_beam << endl << "Everything outside 0 < y_prot < " << (y_beam - 0.5) << " will be rejected" << endl;
 
 	Double_t E, p2, y_prot;
 
@@ -402,7 +402,7 @@ void RunYCut(TString inputfile, TString outputfile, const Double_t beam_momentum
 			E = TMath::Sqrt(proton_mass*proton_mass + p2);
 			y_prot = 0.5*TMath::Log((E+particle->GetPz())/(E-particle->GetPz()));
 
-			if((y_prot < 0.5) || (y_prot > y_beam-0.5))
+			if(y_prot > y_beam-0.5)
 				continue;
 
 			++particles_out;
@@ -475,7 +475,7 @@ int main(int argc, char** argv)
 		if(argc == 5)
 		{
 			y_cut_string = argv[4];
-			cout << "Rapidity cut on spectators: y_target+0.5 < y < y_beam-0.5" << endl;
+			cout << "Rapidity cut on spectators: 0 < y_prot < y_beam-0.5" << endl;
 			RunYCut(inputfile, outputfile, y_cut_string.Atof());
 		}
 		else
